@@ -148,6 +148,39 @@ asyncio.run(main())
 
 更多高级的多智能体协调和工作流程，请阅读 [AgentChat文档](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/index.html)。
 
+### 使用DeepSeek模型
+
+AutoGen支持使用DeepSeek等国产模型。DeepSeek提供OpenAI兼容的API接口：
+
+```python
+import asyncio
+from autogen_agentchat.agents import AssistantAgent
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelInfo, ModelFamily
+
+async def main() -> None:
+    # 使用DeepSeek模型
+    model_client = OpenAIChatCompletionClient(
+        model="deepseek-chat",
+        base_url="https://api.deepseek.com",
+        api_key="your-deepseek-api-key",  # 从 platform.deepseek.com 获取
+        model_info=ModelInfo(
+            vision=False,
+            function_calling=True,
+            json_output=True,
+            family=ModelFamily.UNKNOWN,
+            structured_output=True,
+        ),
+    )
+    agent = AssistantAgent("assistant", model_client=model_client)
+    print(await agent.run(task="请介绍一下你自己"))
+    await model_client.close()
+
+asyncio.run(main())
+```
+
+更多DeepSeek使用详情，请参阅 [中文文档](./docs/zh-CN/user-guide/extensions.md#deepseek)。
+
 ### AutoGen Studio
 
 使用AutoGen Studio无需编写代码即可原型设计和运行多智能体工作流程。

@@ -190,6 +190,45 @@ model_client = OllamaChatCompletionClient(
 )
 ```
 
+### DeepSeek
+
+DeepSeek是一个强大的中文AI模型，提供与OpenAI兼容的API接口：
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelInfo, ModelFamily
+
+# 使用DeepSeek对话模型
+model_client = OpenAIChatCompletionClient(
+    model="deepseek-chat",
+    base_url="https://api.deepseek.com",
+    api_key="your-deepseek-api-key",  # 从 platform.deepseek.com 获取
+    model_info=ModelInfo(
+        vision=False,
+        function_calling=True,
+        json_output=True,
+        family=ModelFamily.UNKNOWN,
+        structured_output=True,
+    ),
+)
+
+# 或使用DeepSeek推理模型（R1）
+model_client = OpenAIChatCompletionClient(
+    model="deepseek-reasoner",
+    base_url="https://api.deepseek.com",
+    api_key="your-deepseek-api-key",
+    model_info=ModelInfo(
+        vision=False,
+        function_calling=True,
+        json_output=True,
+        family=ModelFamily.R1,  # R1模型支持思维链
+        structured_output=True,
+    ),
+)
+```
+
+更多DeepSeek使用详情，请参阅 [Extensions指南中的DeepSeek部分](./user-guide/extensions.md#deepseek)。
+
 ## 下一步
 
 现在您已经了解了基础知识，可以继续探索:

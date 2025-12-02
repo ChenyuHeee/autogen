@@ -87,6 +87,311 @@ model_client = OllamaChatCompletionClient(
 )
 ```
 
+### DeepSeek
+
+DeepSeek提供与OpenAI兼容的API接口，可以直接使用`OpenAIChatCompletionClient`通过设置`base_url`来使用DeepSeek模型。
+
+#### 获取API密钥
+
+1. 访问 [DeepSeek开放平台](https://platform.deepseek.com/)
+2. 注册并登录账户
+3. 在API密钥页面创建新的API密钥
+4. 确保账户有足够余额（DeepSeek API需要预付费）
+
+#### 基本用法
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelInfo, ModelFamily
+
+# 创建DeepSeek模型客户端
+model_client = OpenAIChatCompletionClient(
+    model="deepseek-chat",  # DeepSeek对话模型
+    base_url="https://api.deepseek.com",  # DeepSeek API地址
+    api_key="your-deepseek-api-key",  # 或设置 OPENAI_API_KEY 环境变量
+    model_info=ModelInfo(
+        vision=False,
+        function_calling=True,
+        json_output=True,
+        family=ModelFamily.UNKNOWN,
+        structured_output=True,
+    ),
+)
+```
+
+#### 使用DeepSeek-R1推理模型
+
+DeepSeek-R1是一个强大的推理模型，特别适合需要深度思考的任务：
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelInfo, ModelFamily
+
+# 创建DeepSeek-R1推理模型客户端
+model_client = OpenAIChatCompletionClient(
+    model="deepseek-reasoner",  # DeepSeek推理模型
+    base_url="https://api.deepseek.com",
+    api_key="your-deepseek-api-key",
+    model_info=ModelInfo(
+        vision=False,
+        function_calling=True,
+        json_output=True,
+        family=ModelFamily.R1,  # 使用R1模型族以支持思维链
+        structured_output=True,
+    ),
+)
+```
+
+#### 完整示例：使用DeepSeek创建智能体
+
+```python
+import asyncio
+from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.ui import Console
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelInfo, ModelFamily
+
+async def main():
+    # 创建DeepSeek模型客户端
+    model_client = OpenAIChatCompletionClient(
+        model="deepseek-chat",
+        base_url="https://api.deepseek.com",
+        api_key="your-deepseek-api-key",  # 建议使用环境变量
+        model_info=ModelInfo(
+            vision=False,
+            function_calling=True,
+            json_output=True,
+            family=ModelFamily.UNKNOWN,
+            structured_output=True,
+        ),
+    )
+
+    # 创建智能体
+    agent = AssistantAgent(
+        name="deepseek_assistant",
+        model_client=model_client,
+        system_message="你是一个有帮助的AI助手，使用中文回答问题。",
+    )
+
+    # 运行对话
+    await Console(agent.run_stream(task="请解释什么是多智能体系统？"))
+    
+    # 关闭客户端
+    await model_client.close()
+
+asyncio.run(main())
+```
+
+#### 使用环境变量配置
+
+推荐使用环境变量来管理API密钥：
+
+```bash
+# 设置环境变量
+export DEEPSEEK_API_KEY="your-deepseek-api-key"
+```
+
+```python
+import os
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelInfo, ModelFamily
+
+model_client = OpenAIChatCompletionClient(
+    model="deepseek-chat",
+    base_url="https://api.deepseek.com",
+    api_key=os.environ.get("DEEPSEEK_API_KEY"),
+    model_info=ModelInfo(
+        vision=False,
+        function_calling=True,
+        json_output=True,
+        family=ModelFamily.UNKNOWN,
+        structured_output=True,
+    ),
+)
+```
+
+#### DeepSeek带工具的智能体
+
+DeepSeek模型支持函数调用（Function Calling），可以使用工具：
+
+```python
+import asyncio
+from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.ui import Console
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelInfo, ModelFamily
+
+# 定义工具函数
+async def get_weather(city: str) -> str:
+    """获取指定城市的天气信息。
+    
+    Args:
+        city: 城市名称
+        
+    Returns:
+        天气信息字符串
+    """
+    # 这里是模拟的天气数据
+    weather_data = {
+        "北京": "晴天，温度25°C",
+        "上海": "多云，温度28°C",
+        "深圳": "阵雨，温度30°C",
+    }
+    return weather_data.get(city, f"{city}的天气数据暂不可用")
+
+async def calculate(expression: str) -> str:
+    """计算数学表达式。
+    
+    Args:
+        expression: 数学表达式字符串
+        
+    Returns:
+        计算结果
+    """
+    import ast
+    import operator
+    
+    # 安全的数学运算符映射
+    operators = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.Pow: operator.pow,
+        ast.USub: operator.neg,
+    }
+    
+    def safe_eval(node):
+        if isinstance(node, ast.Constant):
+            return node.value
+        elif isinstance(node, ast.BinOp):
+            left = safe_eval(node.left)
+            right = safe_eval(node.right)
+            return operators[type(node.op)](left, right)
+        elif isinstance(node, ast.UnaryOp):
+            operand = safe_eval(node.operand)
+            return operators[type(node.op)](operand)
+        else:
+            raise ValueError(f"不支持的表达式: {ast.dump(node)}")
+    
+    try:
+        tree = ast.parse(expression, mode='eval')
+        result = safe_eval(tree.body)
+        return f"计算结果: {result}"
+    except Exception as e:
+        return f"计算错误: {e}"
+
+async def main():
+    model_client = OpenAIChatCompletionClient(
+        model="deepseek-chat",
+        base_url="https://api.deepseek.com",
+        api_key="your-deepseek-api-key",
+        model_info=ModelInfo(
+            vision=False,
+            function_calling=True,
+            json_output=True,
+            family=ModelFamily.UNKNOWN,
+            structured_output=True,
+        ),
+    )
+
+    # 创建带工具的智能体
+    agent = AssistantAgent(
+        name="deepseek_tool_agent",
+        model_client=model_client,
+        tools=[get_weather, calculate],
+        system_message="你是一个有帮助的AI助手。可以查询天气和进行数学计算。",
+        reflect_on_tool_use=True,
+    )
+
+    # 测试天气查询
+    await Console(agent.run_stream(task="北京今天天气怎么样？"))
+    
+    # 测试数学计算
+    await Console(agent.run_stream(task="请计算 123 * 456 + 789"))
+    
+    await model_client.close()
+
+asyncio.run(main())
+```
+
+#### DeepSeek多智能体协作
+
+使用DeepSeek模型创建多智能体系统：
+
+```python
+import asyncio
+from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.teams import RoundRobinGroupChat
+from autogen_agentchat.conditions import MaxMessageTermination
+from autogen_agentchat.ui import Console
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelInfo, ModelFamily
+
+async def main():
+    # 创建DeepSeek模型客户端
+    model_client = OpenAIChatCompletionClient(
+        model="deepseek-chat",
+        base_url="https://api.deepseek.com",
+        api_key="your-deepseek-api-key",
+        model_info=ModelInfo(
+            vision=False,
+            function_calling=True,
+            json_output=True,
+            family=ModelFamily.UNKNOWN,
+            structured_output=True,
+        ),
+    )
+
+    # 创建程序员智能体
+    programmer = AssistantAgent(
+        name="programmer",
+        model_client=model_client,
+        system_message="""你是一位资深的Python程序员。
+        你的职责是编写高质量、可维护的代码。
+        在回复中始终使用代码块展示代码。""",
+    )
+
+    # 创建代码审查智能体
+    reviewer = AssistantAgent(
+        name="reviewer",
+        model_client=model_client,
+        system_message="""你是一位代码审查专家。
+        你的职责是审查代码，找出潜在问题并提出改进建议。
+        关注代码的正确性、可读性和性能。""",
+    )
+
+    # 创建团队
+    team = RoundRobinGroupChat(
+        participants=[programmer, reviewer],
+        termination_condition=MaxMessageTermination(max_messages=6),
+    )
+
+    # 运行团队对话
+    await Console(
+        team.run_stream(task="请编写一个Python函数，用于检查一个字符串是否是回文。")
+    )
+    
+    await model_client.close()
+
+asyncio.run(main())
+```
+
+#### DeepSeek可用模型
+
+| 模型名称 | 描述 | 适用场景 |
+|---------|------|---------|
+| `deepseek-chat` | 通用对话模型 | 日常对话、问答、内容创作 |
+| `deepseek-reasoner` | 推理模型(R1) | 复杂推理、数学问题、代码生成 |
+| `deepseek-coder` | 代码专用模型 | 代码生成、代码解释、调试 |
+
+#### 注意事项
+
+1. **API限流**: DeepSeek有API调用频率限制，请注意合理使用
+2. **费用**: DeepSeek API为预付费模式，请确保账户余额充足
+3. **模型能力**: 使用`model_info`参数告诉AutoGen模型的能力，这对于非OpenAI模型是必需的
+4. **网络连接**: 确保网络能够访问 `api.deepseek.com`
+
 ### 模型客户端接口
 
 所有模型客户端都实现相同的接口：
