@@ -9,6 +9,8 @@
 [![Documentation](https://img.shields.io/badge/Documentation-AutoGen-blue?logo=read-the-docs)](https://microsoft.github.io/autogen/)
 [![Blog](https://img.shields.io/badge/Blog-AutoGen-blue?logo=blogger)](https://devblogs.microsoft.com/autogen/)
 
+[English](./README.md) | [中文](./README_zh-CN.md)
+
 </div>
 
 # AutoGen
