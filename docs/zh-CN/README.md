@@ -6,6 +6,7 @@
 
 - [安装指南](./installation.md)
 - [快速入门](./quickstart.md)
+- [新手教程：DeepSeek 多智能体](./tutorials/deepseek-multi-agent.md)
 - [用户指南](./user-guide/index.md)
 
 ## 什么是AutoGen？
